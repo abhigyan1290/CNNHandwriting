@@ -1,8 +1,6 @@
 
 # HandwritingCNN
 
-(Replace with your project banner/image if available)
-
 ## Table of Contents
 - [Introduction](#introduction)
 - [Features](#features)
@@ -19,7 +17,7 @@
 - [Acknowledgements](#acknowledgements)
 
 ## Introduction
-HandwritingCNN is a Convolutional Neural Network (CNN) implemented from scratch in C++ for recognizing handwritten digits. This project serves as a hands-on learning experience to understand the fundamentals of deep learning, neural network architectures, and the complexities of implementing such models in a high-performance language like C++.
+HandwritingCNN is a Convolutional Neural Network (CNN) implemented from scratch in C++ for recognizing handwritten digits. This project serves as a hands-on learning experience that I did to reinforce the fundamentals of deep learning, neural network architectures, and the complexities of implementing such models in a high-performance language like C++. 
 
 By building the CNN from the ground up, this project provides deep insights into:
 
