@@ -1,26 +1,47 @@
 #include <iostream>
-#include <Eigen/Dense>
-
-#ifdef USE_OPENCV
-#include <opencv2/opencv.hpp>
-#endif
+#include "utils/DataLoader.h"
+#include <unistd.h>   // For getcwd
+#include <limits.h>   // For PATH_MAX
 
 int main() {
-    // Test Eigen
-    Eigen::MatrixXd mat(2, 2);
-    mat(0, 0) = 3;
-    mat(1, 0) = 2.5;
-    mat(0, 1) = -1;
-    mat(1, 1) = mat(1, 0) + mat(0, 1);
-    std::cout << "Here is the matrix mat:\n" << mat << std::endl;
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        std::cout << "Current working directory: " << cwd << std::endl;
+    } else {
+        perror("getcwd() error");
+        return 1;
+    }
 
-#ifdef USE_OPENCV
-    // Test OpenCV
-    cv::Mat image = cv::Mat::zeros(100, 100, CV_8UC3);
-    cv::circle(image, cv::Point(50, 50), 40, cv::Scalar(255, 0, 0), -1);
-    cv::imshow("Test Image", image);
-    cv::waitKey(0);
-#endif
+    try {
+        // Initialize DataLoader for training data
+        DataLoader trainData("/home/abhigyan1290/projects/CNN-Handwriting/data/train-images.idx3-ubyte",
+                            "/home/abhigyan1290/projects/CNN-Handwriting/data/train-labels.idx1-ubyte");
+        
+        // Initialize DataLoader for test data
+        DataLoader testData("/home/abhigyan1290/projects/CNN-Handwriting/data/t10k-images.idx3-ubyte",
+                           "/home/abhigyan1290/projects/CNN-Handwriting/data/t10k-labels.idx1-ubyte");
 
+        // Print the number of training and test samples
+        std::cout << "Loaded " << trainData.getNumSamples() << " training samples." << std::endl;
+        std::cout << "Loaded " << testData.getNumSamples() << " test samples." << std::endl;
+
+        // Fetch the first batch from training data
+        int batch_size = 10;
+        Batch batch = trainData.getBatch(0, batch_size);
+        std::cout << "First batch size: " << batch.inputs.size() << std::endl;
+
+        // Print the first input and label
+        std::cout << "First input (first 10 pixels): ";
+        for(int i = 0; i < 10; ++i) {
+            std::cout << batch.inputs[0](i) << " ";
+        }
+        std::cout << std::endl;
+
+        std::cout << "First label: " << batch.labels[0].transpose() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    
     return 0;
 }
