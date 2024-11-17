@@ -1,2 +1,0 @@
-/home/abhigyan1290/projects/CNN-Handwriting/build/CMakeFiles/edit_cache.dir
-/home/abhigyan1290/projects/CNN-Handwriting/build/CMakeFiles/rebuild_cache.dir
