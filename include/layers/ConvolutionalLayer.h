@@ -29,6 +29,7 @@ private:
     Eigen::MatrixXd input_cache;
     Eigen::MatrixXd applyFilter(const Eigen::MatrixXd& input, const Eigen::MatrixXd& filter, double bias) const;
 
+
 };
 
 #endif
