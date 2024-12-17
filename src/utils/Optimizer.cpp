@@ -8,3 +8,4 @@ void SGD::update(std::vector<std::shared_ptr<Layer>>& layers) {
         layer->updateParameters(lr);
     }
 }
+

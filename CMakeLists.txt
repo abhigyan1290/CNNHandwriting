@@ -15,9 +15,8 @@ if(USE_OPENCV)
     include_directories(${OpenCV_INCLUDE_DIRS})
 endif()
 
-# Include directories
+# Include directories for your own headers
 include_directories(
-    ${EIGEN3_INCLUDE_DIR}
     ${PROJECT_SOURCE_DIR}/include
 )
 
@@ -27,7 +26,10 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 # Define the executable
 add_executable(HandwritingCNN ${SOURCES})
 
-# Link libraries
+# Link Eigen3 to the executable
+target_link_libraries(HandwritingCNN PRIVATE Eigen3::Eigen)
+
+# Link OpenCV libraries if used
 if(USE_OPENCV)
-    target_link_libraries(HandwritingCNN ${OpenCV_LIBS})
+    target_link_libraries(HandwritingCNN PRIVATE ${OpenCV_LIBS})
 endif()

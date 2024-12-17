@@ -1,80 +1,121 @@
 #include <iostream>
+#include <vector>
+#include <memory>
 #include "utils/DataLoader.h"
-#include "utils/Activation.h"   // Include Activation header
-#include <unistd.h>             // For getcwd
-#include <limits.h>             // For PATH_MAX
-#include <Eigen/Dense>          // Include Eigen for matrix operations
+#include "utils/NeuralNetwork.h"
+#include "utils/Activation.h"
+#include "utils/Loss.h"
+#include "utils/Optimizer.h"
+#include "layers/ConvolutionalLayer.h"
+#include "layers/PoolingLayer.h"
+#include "layers/FullyConnectedLayer.h"
+#include "layers/SoftmaxLayer.h"
 
-int main() {
-    // Print current working directory
-    char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) != NULL) {
-        std::cout << "Current working directory: " << cwd << std::endl;
-    } else {
-        perror("getcwd() error");
-        return 1;
+double evaluate(NeuralNetwork& network, DataLoader& testData, int batch_size) {
+    int num_batches = testData.getNumSamples() / batch_size;
+    int correct = 0;
+    for(int batch_idx = 0; batch_idx < num_batches; ++batch_idx) {
+        // Get batch
+        Batch batch = testData.getBatch(batch_idx * batch_size, batch_size);
+        
+        // Convert batch inputs and labels to matrices
+        Eigen::MatrixXd input_batch(batch_size, batch.inputs[0].size());
+        Eigen::MatrixXd label_batch(batch_size, batch.labels[0].size());
+        for(int i = 0; i < batch_size; ++i) {
+            input_batch.row(i) = batch.inputs[i];
+            label_batch.row(i) = batch.labels[i];
+        }
+
+        // Forward pass
+        Eigen::MatrixXd predictions = network.forward(input_batch);
+
+        // Get predicted classes
+        for(int i = 0; i < batch_size; ++i) {
+            int predicted = 0;
+            predictions.row(i).maxCoeff(&predicted);
+            int actual = 0;
+            label_batch.row(i).maxCoeff(&actual);
+            if(predicted == actual) {
+                correct++;
+            }
+        }
     }
 
+    return (double)correct / (num_batches * batch_size) * 100.0;
+}
+
+int main() {
     try {
-        // Initialize DataLoader for training data
-        DataLoader trainData("/home/abhigyan1290/projects/CNN-Handwriting/data/train-images.idx3-ubyte",
-                            "/home/abhigyan1290/projects/CNN-Handwriting/data/train-labels.idx1-ubyte");
+        // Load training and test data
+        DataLoader trainData("/home/abhigyandoshi/CNNHandwriting/data/train-images.idx3-ubyte",
+                            "/home/abhigyandoshi/CNNHandwriting/data/train-labels.idx1-ubyte");
         
         // Initialize DataLoader for test data
-        DataLoader testData("/home/abhigyan1290/projects/CNN-Handwriting/data/t10k-images.idx3-ubyte",
-                           "/home/abhigyan1290/projects/CNN-Handwriting/data/t10k-labels.idx1-ubyte");
-
-        // Print the number of training and test samples
+        DataLoader testData("/home/abhigyandoshi/CNNHandwriting/data/t10k-images.idx3-ubyte",
+                           "/home/abhigyandoshi/CNNHandwriting/data/t10k-labels.idx1-ubyte");
         std::cout << "Loaded " << trainData.getNumSamples() << " training samples." << std::endl;
         std::cout << "Loaded " << testData.getNumSamples() << " test samples." << std::endl;
 
-        // Fetch the first batch from training data
-        int batch_size = 10;
-        Batch batch = trainData.getBatch(0, batch_size);
-        std::cout << "First batch size: " << batch.inputs.size() << std::endl;
+        // Initialize the network
+        NeuralNetwork network;
+        
+        // Add layers
+        network.addLayer(std::make_shared<ConvolutionalLayer>(1, 8, 3, 1, 1)); // Example parameters
+        network.addLayer(std::make_shared<ReLU>());
+        network.addLayer(std::make_shared<PoolingLayer>(2, 2));
+        network.addLayer(std::make_shared<FullyConnectedLayer>(8 * 14 * 14, 10)); // Adjust based on pooling
+        network.addLayer(std::make_shared<SoftmaxLayer>());
 
-        // Print the first input and label
-        std::cout << "First input (first 10 pixels): ";
-        for(int i = 0; i < 10; ++i) {
-            std::cout << batch.inputs[0](i) << " ";
+        // Initialize loss function and optimizer
+        CrossEntropyLoss loss_fn;
+        SGD optimizer(0.01); // Learning rate
+
+        // Training parameters
+        int epochs = 10;
+        int batch_size = 64;
+        int num_batches = trainData.getNumSamples() / batch_size;
+
+        for(int epoch = 0; epoch < epochs; ++epoch) {
+            double epoch_loss = 0.0;
+            for(int batch_idx = 0; batch_idx < num_batches; ++batch_idx) {
+                // Get batch
+                Batch batch = trainData.getBatch(batch_idx * batch_size, batch_size);
+                
+                // Convert batch inputs and labels to matrices
+                Eigen::MatrixXd input_batch(batch_size, batch.inputs[0].size());
+                Eigen::MatrixXd label_batch(batch_size, batch.labels[0].size());
+                for(int i = 0; i < batch_size; ++i) {
+                    input_batch.row(i) = batch.inputs[i];
+                    label_batch.row(i) = batch.labels[i];
+                }
+
+                // Forward pass
+                Eigen::MatrixXd predictions = network.forward(input_batch);
+
+                // Compute loss
+                double loss = loss_fn.compute(predictions, label_batch);
+                epoch_loss += loss;
+
+                // Backward pass
+                Eigen::MatrixXd grad_loss = loss_fn.derivative(predictions, label_batch);
+                network.backward(grad_loss);
+
+                // Update parameters
+                optimizer.update(network.getLayers());
+            }
+
+            // Calculate average loss
+            double average_loss = epoch_loss / num_batches;
+
+            // Evaluate on test data
+            double accuracy = evaluate(network, testData, batch_size);
+
+            std::cout << "Epoch " << epoch + 1 << "/" << epochs 
+                      << " - Loss: " << average_loss 
+                      << " - Accuracy: " << accuracy << "%" << std::endl;
         }
-        std::cout << std::endl;
 
-        std::cout << "First label: " << batch.labels[0].transpose() << std::endl;
-
-        // -----------------------------
-        // Activation Functions Testing
-        // -----------------------------
-
-        // Initialize Activation Functions
-        ReLU relu;
-        Softmax softmax;
-
-        // Create a sample input matrix for ReLU
-        // Example: A 3x4 matrix with both positive and negative values
-        Eigen::MatrixXd relu_input(3, 4);
-        relu_input << -1, 2, -3, 4,
-                      5, -6, 7, -8,
-                      9, 10, -11, 12;
-        std::cout << "\nReLU Activation Test:" << std::endl;
-        std::cout << "Input:\n" << relu_input << std::endl;
-
-        // Apply ReLU
-        Eigen::MatrixXd relu_output = relu.forward(relu_input);
-        std::cout << "Output after ReLU:\n" << relu_output << std::endl;
-
-        // Create a sample input matrix for Softmax
-        // Example: A 2x3 matrix (2 samples, 3 classes)
-        Eigen::MatrixXd softmax_input(2, 3);
-        softmax_input << 1.0, 2.0, 3.0,
-                         1.0, 2.0, 3.0;
-        std::cout << "\nSoftmax Activation Test:" << std::endl;
-        std::cout << "Input:\n" << softmax_input << std::endl;
-
-        // Apply Softmax
-        Eigen::MatrixXd softmax_output = softmax.forward(softmax_input);
-        std::cout << "Output after Softmax:\n" << softmax_output << std::endl;
-
+        return 0;
     }
     catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
